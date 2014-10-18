@@ -59,11 +59,14 @@ function isReplaceable(node, prevNode) {
  * BiDi flip or replace a list of `declarations`.
  *
  * @param {Array} declarations
+ * @param {Boolean} [onlyFlips] Whether to remove non flipped rules or not, default is false
  */
 
-function processDeclarations(declarations) {
+function processDeclarations(declarations, onlyFlips) {
   return declarations.map(function (declaration, i, all) {
     var prevNode = all[i - 1];
+    var previousValue = declaration.value;
+    var previousProp = declaration.property;
 
     if (isReplaceable(declaration, prevNode)) {
       declaration.value = prevNode.comment.match(RE_REPLACE)[1];
@@ -73,9 +76,12 @@ function processDeclarations(declarations) {
       declaration.property = flipProperty(declaration.property);
       declaration.value = flipValueOf(declaration.property, declaration.value);
     }
+    if (previousProp === declaration.property && previousValue === declaration.value && onlyFlips) {
+        return undefined;
+    }
 
     return declaration;
-  });
+  }).filter(Boolean);
 }
 
 /**
@@ -84,18 +90,19 @@ function processDeclarations(declarations) {
  * each flippable declaration is flipped.
  *
  * @param {Object} node
+ * @param {Boolean} [onlyFlips] Whether to remove non flipped rules or not, default is false
  */
 
-function flipNode(node) {
+function flipNode(node, onlyFlips) {
   var rules = node.rules || node.keyframes || [];
 
   rules.forEach(function (rule, i, all) {
     if (rule.declarations) {
       if (isFlippable(rule, all[i - 1])) {
-        processDeclarations(rule.declarations);
+          rule.declarations = processDeclarations(rule.declarations, onlyFlips);
       }
     } else {
-      flipNode(rule);
+      flipNode(rule, onlyFlips);
     }
   });
 }
@@ -108,6 +115,7 @@ function flipNode(node) {
  *   @param {Boolean} [options.compress] Whether to slightly compress output.
  *     Some newlines and indentation are removed. Comments stay intact.
  *   @param {String} [options.indent] Default is `'  '` (two spaces).
+ *   @param {Boolean} [options.onlyFlips] Whether to remove non flipped rules or not, default is false
  * @returns {String}
  */
 
@@ -118,7 +126,7 @@ function flip(str, options) {
 
   var node = css.parse(str, options);
 
-  flipNode(node.stylesheet);
+  flipNode(node.stylesheet, options.onlyFlips || false);
 
   return css.stringify(node, options);
 }

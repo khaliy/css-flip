@@ -3,9 +3,8 @@ var css = require('css');
 var flip = require('..');
 
 function ensure(input, output, options) {
-  output || (output = input);
-  options || (options = {compress: true});
-
+  output !== undefined || (output = input);
+  options !== undefined || (options = {compress: true});
   assert.equal(flip(input, options), output, input + ' => ' + output);
 }
 
@@ -320,6 +319,12 @@ describe('invalid CSS', function () {
   it('should not crash', function () {
     ensure('p{__proto__:42;toString:lolwat;}', 'p{__proto__:42;toString:lolwat;}');
   });
+});
+
+describe('onlyFlips addition', function () {
+    it('should not contian non flipped rules', function () {
+        ensure('p{__proto__:42;toString:lolwat;}', '',{onlyFlips:true,compress:true});
+    });
 });
 
 describe('rework', function () {
